@@ -1,0 +1,157 @@
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <button (click)="goBack()" class="p-2 text-brand-dark hover:bg-gray-100 rounded-lg transition-colors">
+                <lucide-icon name="arrow-left" [size]="24"></lucide-icon>
+            </button>
+            <h2 class="text-2xl font-bold text-brand-dark">Gestión de Clientes</h2>
+        </div>
+        <button (click)="openAddModal()"
+            class="bg-brand-terra hover:bg-brand-wood text-white px-4 py-2 flex items-center gap-2 rounded-xl transition-colors font-medium">
+            <lucide-icon name="plus" [size]="20"></lucide-icon>
+            Nuevo Cliente
+        </button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="flex justify-center items-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-terra"></div>
+    </div>
+
+    <!-- Clients List -->
+    <div *ngIf="!isLoading" class="bg-white rounded-2xl shadow-sm border border-brand-wood/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-500">
+                <thead class="text-xs text-brand-wood uppercase bg-brand-cream/30 border-b border-gray-100">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 font-semibold">Cliente</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Teléfono</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Email</th>
+                        <th scope="col" class="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let client of clients"
+                        class="bg-white border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 font-medium text-brand-dark">
+                            {{ client.nameOfClient }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ client.phoneNumber }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ client.emailClient }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button (click)="openEditModal(client)"
+                                    class="p-2 text-brand-terra hover:bg-brand-cream rounded-lg transition-colors border border-transparent hover:border-brand-terra/30"
+                                    title="Editar">
+                                    <lucide-icon name="pencil" [size]="18" class="stroke-current"></lucide-icon>
+                                </button>
+                                <button (click)="confirmDelete(client)"
+                                    class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                                    title="Eliminar">
+                                    <lucide-icon name="trash-2" [size]="18" class="stroke-current"></lucide-icon>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr *ngIf="clients.length === 0">
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                            No hay clientes registrados en el sistema.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all">
+            <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-brand-cream/20">
+                <h3 class="text-lg font-bold text-brand-dark">
+                    {{ modalMode === 'ADD' ? 'Nuevo Cliente' : 'Editar Cliente' }}
+                </h3>
+                <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <lucide-icon name="x" [size]="24"></lucide-icon>
+                </button>
+            </div>
+
+            <form [formGroup]="form" (ngSubmit)="onSubmit()" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Nombre Completo</label>
+                    <input type="text" formControlName="nameOfClient"
+                        class="w-full p-2.5 rounded-lg border border-gray-200 focus:border-brand-terra focus:ring-1 focus:ring-brand-terra outline-none transition-all placeholder:text-gray-300"
+                        placeholder="Ej. Juan Pérez">
+                    <span class="text-xs text-red-500 mt-1 block"
+                        *ngIf="form.get('nameOfClient')?.touched && form.get('nameOfClient')?.invalid">
+                        El nombre es requerido.
+                    </span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Teléfono</label>
+                    <input type="text" formControlName="phoneNumber"
+                        class="w-full p-2.5 rounded-lg border border-gray-200 focus:border-brand-terra focus:ring-1 focus:ring-brand-terra outline-none transition-all placeholder:text-gray-300"
+                        placeholder="Ej. 999888777">
+                    <span class="text-xs text-red-500 mt-1 block"
+                        *ngIf="form.get('phoneNumber')?.touched && form.get('phoneNumber')?.invalid">
+                        El teléfono es requerido.
+                    </span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Correo Electrónico</label>
+                    <input type="email" formControlName="emailClient"
+                        class="w-full p-2.5 rounded-lg border border-gray-200 focus:border-brand-terra focus:ring-1 focus:ring-brand-terra outline-none transition-all placeholder:text-gray-300"
+                        placeholder="correo@ejemplo.com">
+                    <span class="text-xs text-red-500 mt-1 block"
+                        *ngIf="form.get('emailClient')?.touched && form.get('emailClient')?.invalid">
+                        Ingrese un correo válido.
+                    </span>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end gap-3 mt-6">
+                    <button type="button" (click)="closeModal()"
+                        class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" [disabled]="form.invalid"
+                        class="px-5 py-2.5 text-sm font-bold text-white bg-brand-terra hover:bg-brand-wood rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <lucide-icon name="save" [size]="18"></lucide-icon>
+                        {{ modalMode === 'ADD' ? 'Registrar' : 'Guardar Cambios' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div *ngIf="showDeleteConfirm"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center p-8">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                <lucide-icon name="alert-triangle" [size]="32"></lucide-icon>
+            </div>
+            <h3 class="text-xl font-bold text-brand-dark mb-2">Eliminar Cliente</h3>
+            <p class="text-gray-500 mb-6 flex flex-col gap-1">
+                <span>¿Estás seguro de que deseas eliminar este cliente?</span>
+                <strong class="text-brand-dark">{{ clientToDelete?.nameOfClient }}</strong>
+                <span class="text-xs text-red-500 mt-2">Esta acción no se puede deshacer.</span>
+            </p>
+            <div class="flex gap-3">
+                <button (click)="showDeleteConfirm = false"
+                    class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                    Cancelar
+                </button>
+                <button (click)="deleteClient()"
+                    class="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors">
+                    Sí, Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

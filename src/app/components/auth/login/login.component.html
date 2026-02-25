@@ -1,0 +1,77 @@
+<div class="min-h-screen flex items-center justify-center bg-brand-cream/30 p-4">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-brand-wood/10 overflow-hidden">
+        <!-- Header -->
+        <div class="bg-brand-terra p-8 text-center relative overflow-hidden">
+            <!-- Decorative background elements -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-brand-dark/10 rounded-full blur-2xl"></div>
+
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 text-white shadow-inner">
+                <lucide-icon name="chef-hat" [size]="32"></lucide-icon>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2">Bienvenido</h2>
+            <p class="text-white/80 font-medium tracking-wide">Sabores del Barrio</p>
+        </div>
+
+        <!-- Form Container -->
+        <div class="p-8">
+            <h3 class="text-xl font-bold text-brand-dark mb-6 text-center">Iniciar Sesión</h3>
+
+            <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-5">
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="mail" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="email" formControlName="email"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-terra focus:ring-2 focus:ring-brand-terra/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="admin@sabores.com">
+                    </div>
+                    <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
+                        *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
+                        Ingrese un correo válido.
+                    </span>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5 ml-1 pr-1">
+                        <label class="block text-sm font-semibold text-gray-600">Contraseña</label>
+                        <a href="#"
+                            class="text-xs text-brand-terra hover:text-brand-wood font-medium transition-colors">¿Olvidaste
+                            tu contraseña?</a>
+                    </div>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="lock" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="password" formControlName="password"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-terra focus:ring-2 focus:ring-brand-terra/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="••••••••">
+                    </div>
+                </div>
+
+                <button type="submit" [disabled]="loginForm.invalid || isSubmitting"
+                    class="w-full mt-8 bg-brand-dark hover:bg-brand-wood text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-brand-dark/20 hover:shadow-brand-wood/30 hover:-translate-y-0.5">
+                    <ng-container *ngIf="!isSubmitting">
+                        Ingresar <lucide-icon name="arrow-right" [size]="18"></lucide-icon>
+                    </ng-container>
+                    <ng-container *ngIf="isSubmitting">
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Autenticando...
+                    </ng-container>
+                </button>
+            </form>
+
+            <div class="mt-8 text-center text-sm text-gray-500">
+                ¿No tienes una cuenta?
+                <a routerLink="/register"
+                    class="text-brand-terra hover:text-brand-wood font-bold transition-colors ml-1">Regístrate aquí</a>
+            </div>
+        </div>
+    </div>
+</div>

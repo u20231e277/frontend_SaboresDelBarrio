@@ -1,0 +1,109 @@
+<div class="min-h-screen flex items-center justify-center bg-brand-cream/30 p-4 py-12">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-brand-wood/10 overflow-hidden">
+        <!-- Header -->
+        <div class="bg-brand-wood p-8 text-center relative overflow-hidden">
+            <!-- Decorative background elements -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-brand-terra/20 rounded-full blur-2xl"></div>
+
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 text-white shadow-inner">
+                <lucide-icon name="user-plus" [size]="32"></lucide-icon>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2">Crear Cuenta</h2>
+            <p class="text-white/80 font-medium tracking-wide">Únete a Sabores del Barrio</p>
+        </div>
+
+        <!-- Form Container -->
+        <div class="p-8">
+
+            <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4">
+
+                <!-- Full Name -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Nombre Completo</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="user" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="text" formControlName="fullName"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-wood focus:ring-2 focus:ring-brand-wood/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="Ej. Juan Pérez">
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="mail" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="email" formControlName="email"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-wood focus:ring-2 focus:ring-brand-wood/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="correo@ejemplo.com">
+                    </div>
+                    <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
+                        *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
+                        Ingrese un correo válido.
+                    </span>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Contraseña</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="lock" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="password" formControlName="password"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-wood focus:ring-2 focus:ring-brand-wood/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="••••••••">
+                    </div>
+                    <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
+                        *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
+                        La contraseña debe tener al menos 6 caracteres.
+                    </span>
+                </div>
+
+                <!-- Confirm Password -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Confirmar Contraseña</label>
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <lucide-icon name="check-circle" [size]="18"></lucide-icon>
+                        </div>
+                        <input type="password" formControlName="confirmPassword"
+                            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-wood focus:ring-2 focus:ring-brand-wood/20 outline-none transition-all placeholder:text-gray-400"
+                            placeholder="••••••••">
+                    </div>
+                    <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
+                        *ngIf="registerForm.hasError('mismatch') && registerForm.get('confirmPassword')?.touched">
+                        Las contraseñas no coinciden.
+                    </span>
+                </div>
+
+                <button type="submit" [disabled]="registerForm.invalid || isSubmitting"
+                    class="w-full mt-8 bg-brand-terra hover:bg-brand-wood text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-brand-terra/20 hover:shadow-brand-wood/30 hover:-translate-y-0.5">
+                    <ng-container *ngIf="!isSubmitting">
+                        Registrarse <lucide-icon name="check" [size]="18"></lucide-icon>
+                    </ng-container>
+                    <ng-container *ngIf="isSubmitting">
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Creando cuenta...
+                    </ng-container>
+                </button>
+            </form>
+
+            <div class="mt-8 text-center text-sm text-gray-500">
+                ¿Ya tienes una cuenta?
+                <a routerLink="/login"
+                    class="text-brand-wood hover:text-brand-dark font-bold transition-colors ml-1">Inicia sesión</a>
+            </div>
+        </div>
+    </div>
+</div>
