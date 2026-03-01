@@ -3,12 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, map, of, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { WasteDTO, SaleDTO } from '../models/api-dtos.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class DashboardService {
     private http = inject(HttpClient);
+    private authService = inject(AuthService);
     private apiUrl = environment.apiUrl;
 
     constructor() { }
@@ -35,12 +37,20 @@ export class DashboardService {
     }
 
     getWastes(): Observable<WasteDTO[]> {
+        if (!this.authService.hasRole('JEFE_DE_COCINA') && !this.authService.hasRole('ADMINISTRADOR')) {
+            return of([]);
+        }
+
         return this.http.get<WasteDTO[]>(`${this.apiUrl}/wastes`).pipe(
             catchError(() => of([]))
         );
     }
 
     getSalesTotalToday(): Observable<number> {
+        if (!this.authService.hasRole('MOZO') && !this.authService.hasRole('ADMINISTRADOR')) {
+            return of(0);
+        }
+
         // Determine today's start and end
         const start = new Date();
         start.setHours(0, 0, 0, 0);

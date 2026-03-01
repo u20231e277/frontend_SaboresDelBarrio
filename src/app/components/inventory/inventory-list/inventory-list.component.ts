@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventoryService } from '../../../services/inventory.service';
+import { AuthService } from '../../../services/auth.service';
 import { LucideAngularModule } from 'lucide-angular';
 import { Observable } from 'rxjs';
 import { Insumo } from '../../../models/insumo.model';
@@ -15,7 +16,7 @@ import { SupplyDTO } from '../../../models/api-dtos.model';
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold text-brand-dark">Inventario de Insumos</h2>
-        <button (click)="showCreateForm = !showCreateForm" class="bg-brand-terra text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-wood transition-colors flex items-center gap-2">
+        <button *ngIf="hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" (click)="showCreateForm = !showCreateForm" class="bg-brand-terra text-white px-4 py-2 rounded-lg font-medium hover:bg-brand-wood transition-colors flex items-center gap-2">
            <lucide-icon name="package" [size]="18"></lucide-icon>
            {{ showCreateForm ? 'Cancelar' : 'Nuevo Insumo' }}
         </button>
@@ -93,7 +94,12 @@ import { SupplyDTO } from '../../../models/api-dtos.model';
 })
 export class InventoryListComponent {
   inventoryService = inject(InventoryService);
+  authService = inject(AuthService);
   insumos$: Observable<Insumo[]> = this.inventoryService.getInsumos();
+
+  hasRole(role: string): boolean {
+    return this.authService.hasRole(role);
+  }
 
   showCreateForm = false;
   newSupply: SupplyDTO = {

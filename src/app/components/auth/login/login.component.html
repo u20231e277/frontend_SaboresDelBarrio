@@ -21,19 +21,19 @@
             <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-5">
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Correo Electrónico</label>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1.5 ml-1">Usuario</label>
                     <div class="relative">
                         <div
                             class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                            <lucide-icon name="mail" [size]="18"></lucide-icon>
+                            <lucide-icon name="user" [size]="18"></lucide-icon>
                         </div>
-                        <input type="email" formControlName="email"
+                        <input type="text" formControlName="username"
                             class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-terra focus:ring-2 focus:ring-brand-terra/20 outline-none transition-all placeholder:text-gray-400"
-                            placeholder="admin@sabores.com">
+                            placeholder="tu_usuario">
                     </div>
                     <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
-                        *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.invalid">
-                        Ingrese un correo válido.
+                        *ngIf="loginForm.get('username')?.touched && loginForm.get('username')?.invalid">
+                        Ingrese un usuario válido.
                     </span>
                 </div>
 
@@ -53,6 +53,13 @@
                             class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-terra focus:ring-2 focus:ring-brand-terra/20 outline-none transition-all placeholder:text-gray-400"
                             placeholder="••••••••">
                     </div>
+                </div>
+
+                <!-- Error Message -->
+                <div *ngIf="loginError"
+                    class="p-3 bg-red-50 text-red-500 rounded-xl border border-red-100 flex items-center gap-2 text-sm font-medium">
+                    <lucide-icon name="alert-circle" [size]="18"></lucide-icon>
+                    <span>{{ loginError }}</span>
                 </div>
 
                 <button type="submit" [disabled]="loginForm.invalid || isSubmitting"

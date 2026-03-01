@@ -17,7 +17,18 @@
         <!-- Form Container -->
         <div class="p-8">
 
-            <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4">
+            <!-- Registration disabled message -->
+            <div
+                class="mb-6 p-4 bg-yellow-50 text-yellow-700 rounded-xl border border-yellow-200 flex items-start gap-3">
+                <lucide-icon name="alert-triangle" [size]="24" class="shrink-0 mt-0.5"></lucide-icon>
+                <div class="text-sm">
+                    <p class="font-bold mb-1">Registro no disponible</p>
+                    <p>El registro de nuevos usuarios debe ser autorizado y creado por un Administrador del sistema. Por
+                        favor, contacte con administración si necesita acceso.</p>
+                </div>
+            </div>
+
+            <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4 opacity-70 pointer-events-none">
 
                 <!-- Full Name -->
                 <div>
@@ -63,10 +74,6 @@
                             class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-wood focus:ring-2 focus:ring-brand-wood/20 outline-none transition-all placeholder:text-gray-400"
                             placeholder="••••••••">
                     </div>
-                    <span class="text-xs text-red-500 mt-1.5 ml-1 block font-medium"
-                        *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
-                        La contraseña debe tener al menos 6 caracteres.
-                    </span>
                 </div>
 
                 <!-- Confirm Password -->

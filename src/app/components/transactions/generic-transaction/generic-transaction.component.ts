@@ -62,7 +62,7 @@ import { SaleDTO, BuyDTO, SaleDetailDTO, BuyDetailDTO } from '../../../models/ap
                    <select formControlName="id_usuario" class="w-full p-2.5 rounded-lg border border-gray-200 focus:border-brand-terra outline-none">
                       <option [ngValue]="null" disabled>Seleccione Usuario</option>
                       <option *ngFor="let user of users$ | async" [ngValue]="user.idUser">
-                         {{ user.nombre }} {{ user.role?.nameOfRole ? '(' + user.role.nameOfRole + ')' : '' }}
+                         {{ user.name }} {{ user.role?.nameOfRole ? '(' + user.role.nameOfRole + ')' : '' }}
                       </option>
                    </select>
                 </div>

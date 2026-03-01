@@ -4,17 +4,23 @@ import { Observable, forkJoin, map, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Insumo } from '../models/insumo.model';
 import { SupplyDTO, InventoryDTO, DishDTO } from '../models/api-dtos.model';
+import { AuthService } from './auth.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class InventoryService {
     private http = inject(HttpClient);
+    private authService = inject(AuthService);
     private apiUrl = environment.apiUrl;
 
     constructor() { }
 
     getInsumos(): Observable<Insumo[]> {
+        if (!this.authService.hasRole('JEFE_DE_COCINA') && !this.authService.hasRole('ADMINISTRADOR')) {
+            return of([]);
+        }
+
         return forkJoin({
             supplies: this.http.get<SupplyDTO[]>(`${this.apiUrl}/supplies`),
             inventory: this.http.get<InventoryDTO[]>(`${this.apiUrl}/inventory`)

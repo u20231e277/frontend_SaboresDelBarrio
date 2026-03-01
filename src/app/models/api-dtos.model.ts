@@ -16,7 +16,7 @@ export interface UserDTO {
     role: RoleDTO;
     emailUser: string;
     passwordUser?: string; // writeBy
-    nombre: string;
+    name: string;
 }
 
 export interface SupplyDTO {
