@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
-    selector: 'app-unauthorized',
-    standalone: true,
-    imports: [CommonModule, LucideAngularModule],
-    template: `
+  selector: 'app-unauthorized',
+  standalone: true,
+  imports: [CommonModule, LucideAngularModule],
+  template: `
     <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-inter">
       <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-100 mb-6">
@@ -26,16 +27,21 @@ import { LucideAngularModule } from 'lucide-angular';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     :host {
       display: block;
     }
   `]
 })
 export class UnauthorizedComponent {
-    constructor(private router: Router) { }
+  authService = inject(AuthService);
+  router = inject(Router);
 
-    goBack() {
-        this.router.navigate(['/dashboard']);
+  goBack() {
+    if (this.authService.hasRole('MOZO') && !this.authService.hasRole('ADMINISTRADOR') && !this.authService.hasRole('JEFE_DE_COCINA')) {
+      this.router.navigate(['/ventas']);
+    } else {
+      this.router.navigate(['/dashboard']);
     }
+  }
 }

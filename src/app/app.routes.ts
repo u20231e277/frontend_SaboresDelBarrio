@@ -13,7 +13,12 @@ export const routes: Routes = [
         canActivate: [authGuard],
         children: [
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-            { path: 'dashboard', component: DashboardComponent },
+            {
+                path: 'dashboard',
+                component: DashboardComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['JEFE_DE_COCINA', 'ADMINISTRADOR'] }
+            },
             {
                 path: 'inventario',
                 component: InventoryListComponent,
@@ -37,6 +42,12 @@ export const routes: Routes = [
                 component: GenericTransactionComponent,
                 canActivate: [roleGuard],
                 data: { type: 'COMPRA', title: 'Registro de Compras', roles: ['JEFE_DE_COCINA', 'ADMINISTRADOR'] }
+            },
+            {
+                path: 'usuarios',
+                loadComponent: () => import('./components/admin/user-management/user-management.component').then(m => m.UserManagementComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['ADMINISTRADOR'] }
             }
         ]
     },

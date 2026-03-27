@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormArray } from '@angular/forms';
 import { SalesService } from '../../../services/sales.service';
@@ -178,14 +178,14 @@ import { SaleDTO, BuyDTO, SaleDetailDTO, BuyDetailDTO } from '../../../models/ap
     </div>
   `
 })
-export class GenericTransactionComponent implements OnInit {
+export class GenericTransactionComponent implements OnInit, AfterViewInit {
    salesService = inject(SalesService);
    purchaseService = inject(PurchaseService);
    inventoryService = inject(InventoryService);
    fb = inject(FormBuilder);
    route = inject(ActivatedRoute);
    router = inject(Router);
-   // cdr removed - no longer needed
+   private cdr = inject(ChangeDetectorRef);
 
    title = 'Registro';
    type: 'VENTA' | 'COMPRA' = 'VENTA';
@@ -218,16 +218,16 @@ export class GenericTransactionComponent implements OnInit {
    }
 
    ngOnInit() {
-      this.route.data.subscribe(data => {
-         this.title = data['title'] || 'Registro';
-         this.type = data['type'] || 'VENTA';
-         // Defer execution to avoid NG0100 (ExpressionChangedAfterItHasBeenCheckedError)
-         setTimeout(() => {
-            this.setupObservables();
-         }, 0);
-      });
+      const data = this.route.snapshot.data;
+      this.title = data['title'] || 'Registro';
+      this.type = data['type'] || 'VENTA';
+      this.setupObservables();
 
       this.inventoryService.getPlatos().subscribe(d => this.dishesList = d);
+   }
+
+   ngAfterViewInit() {
+      this.cdr.detectChanges();
    }
 
    setupObservables() {
@@ -306,8 +306,18 @@ export class GenericTransactionComponent implements OnInit {
       const formVal = this.form.value;
       console.log('Form Value:', formVal);
 
+      const dateVal = formVal.fecha as string; // expected format: yyyy-MM-dd
+      const now = new Date();
+      const timeStr = [
+         now.getHours().toString().padStart(2, '0'),
+         now.getMinutes().toString().padStart(2, '0'),
+         now.getSeconds().toString().padStart(2, '0')
+      ].join(':');
+      const dateTimeToSend = `${dateVal}T${timeStr}`;
+
       if (this.type === 'VENTA') {
          const sale: SaleDTO = {
+            dateTime: dateTimeToSend,
             idClient: Number(formVal.id_cliente),
             idUser: Number(formVal.id_usuario),
             details: (formVal.detalles as any[]).map(d => ({
@@ -327,8 +337,10 @@ export class GenericTransactionComponent implements OnInit {
             error: (err) => {
                this.isSubmitting = false;
                console.error('Sale Error:', err);
-               if (err.error && err.error.message && err.error.message.includes('unique result')) {
-                  this.errorMessage = 'Error del sistema: Se encontraron múltiples registros para el cliente o usuario seleccionado.';
+               if (err.error && typeof err.error === 'string') {
+                  this.errorMessage = err.error;
+               } else if (err.error && err.error.message) {
+                  this.errorMessage = err.error.message;
                } else {
                   this.errorMessage = 'Ocurrió un error al registrar la venta. Verifique los datos e intente nuevamente.';
                }
@@ -341,7 +353,7 @@ export class GenericTransactionComponent implements OnInit {
          const buy: BuyDTO = {
             idProvider: Number(formVal.id_proveedor),
             idUser: Number(formVal.id_usuario),
-            dateTime: new Date().toISOString(),
+            dateTime: dateTimeToSend,
             details: (formVal.detalles as any[]).map(d => ({
                idSupply: Number(d.id_insumo),
                quantity: Number(d.cantidad),

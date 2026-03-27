@@ -34,7 +34,13 @@ export class LoginComponent {
     this.authService.login(this.loginForm.value).subscribe({
       next: () => {
         this.isSubmitting = false;
-        this.router.navigate(['/dashboard']);
+
+        // Redirect based on role
+        if (this.authService.hasRole('MOZO') && !this.authService.hasRole('ADMINISTRADOR') && !this.authService.hasRole('JEFE_DE_COCINA')) {
+          this.router.navigate(['/ventas']);
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.isSubmitting = false;

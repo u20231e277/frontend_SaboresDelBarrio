@@ -13,10 +13,11 @@ export interface RoleDTO {
 
 export interface UserDTO {
     idUser?: number;
-    role: RoleDTO;
-    emailUser: string;
-    passwordUser?: string; // writeBy
+    idRoleUser: number;
     name: string;
+    emailUser: string;
+    username: string;
+    passwordUser?: string;
 }
 
 export interface SupplyDTO {
