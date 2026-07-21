@@ -45,6 +45,7 @@ export interface ProviderDTO {
 export interface InventoryDTO {
     idInventary?: number;
     fecha?: string; // date-time
+    idSupply?: number;
     supplyId?: number;
     supplyName?: string;
     stockInicial?: number;

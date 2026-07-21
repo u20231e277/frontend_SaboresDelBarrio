@@ -30,8 +30,8 @@ export class InventoryService {
                 const inventoryMap = new Map<number, number>();
                 inventory.forEach(item => {
                     // Check if supplyId exists and use stockFinal or stockInicial as current stock
-                    if (item.supplyId !== undefined && item.stockFinal !== undefined) {
-                        inventoryMap.set(item.supplyId, item.stockFinal);
+                    if (item.idSupply !== undefined && item.stockFinal !== undefined) {
+                        inventoryMap.set(item.idSupply, item.stockFinal);
                     }
                 });
 

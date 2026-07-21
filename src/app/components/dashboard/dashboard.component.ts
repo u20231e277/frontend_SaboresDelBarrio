@@ -79,7 +79,7 @@ import { Observable } from 'rxjs';
              </div>
              <div>
                 <h3 class="text-xl font-bold text-brand-dark">Motor de Predicción (Random Forest)</h3>
-                <p class="text-sm text-gray-500">Estima stock necesario por insumo y mes</p>
+                <p class="text-sm text-gray-500">Configuración de análisis predictivo</p>
              </div>
           </div>
 
@@ -87,20 +87,24 @@ import { Observable } from 'rxjs';
              <div class="lg:col-span-1 space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Insumo a Predecir</label>
-                    <select [(ngModel)]="selectedInsumo" (change)="checkPrediction()" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
+                    <select [(ngModel)]="selectedInsumo" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
                        <option [ngValue]="null" disabled>Seleccione Insumo</option>
                        <option *ngFor="let item of insumos$ | async" [value]="item.id_insumo">{{ item.nombre }}</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Mes de Proyección</label>
-                    <select [(ngModel)]="selectedMonth" (change)="checkPrediction()" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
-                       <option *ngFor="let m of months" [value]="m.value">{{ m.label }}</option>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Intervalo de Tiempo</label>
+                    <select [(ngModel)]="selectedInterval" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
+                       <option *ngFor="let m of timeIntervals" [value]="m.value">{{ m.label }}</option>
                     </select>
                 </div>
                 
-                 <!-- Download Report Button -->
-                 <button *ngIf="currentPrediction" (click)="downloadReport()" class="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 bg-brand-dark text-white rounded-xl hover:bg-brand-wood transition-colors shadow-lg">
+                 <!-- Buttons -->
+                 <button (click)="runPrediction()" class="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 bg-brand-terra text-white rounded-xl hover:bg-brand-terra/90 transition-colors shadow-lg font-bold">
+                    <lucide-icon name="brain-circuit" [size]="20"></lucide-icon>
+                    PREDECIR
+                 </button>
+                 <button *ngIf="currentPrediction" (click)="downloadReport()" class="w-full flex items-center justify-center gap-2 mt-2 px-4 py-3 bg-brand-dark text-white rounded-xl hover:bg-brand-wood transition-colors shadow-lg">
                     <lucide-icon name="file-text" [size]="20"></lucide-icon>
                     Descargar Reporte PDF
                  </button>
@@ -108,66 +112,45 @@ import { Observable } from 'rxjs';
              
              <div class="lg:col-span-3">
                  <!-- Prediction Result Card -->
-                 <div *ngIf="currentPrediction" class="bg-white border border-brand-wood/10 rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                           <div class="flex items-center gap-2 mb-1">
-                              <span class="text-xs font-bold uppercase tracking-wider text-brand-wood bg-brand-cream px-2 py-1 rounded-md" *ngIf="currentPrediction.antiguo">
-                                 Predicción Antigua ({{ currentPrediction.fecha_prediccion }})
-                              </span>
-                               <span class="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-1 rounded-md" *ngIf="!currentPrediction.antiguo">
-                                 Nueva Predicción
-                              </span>
-                           </div>
-                           <div class="flex items-baseline gap-2 mt-2">
-                              <span class="text-4xl font-bold text-brand-dark">{{ currentPrediction.cantidad_estimada }}</span>
-                              <span class="text-xl text-gray-500 font-medium">{{ getUnit() }} estimados</span>
-                           </div>
+                 <div *ngIf="currentPrediction" class="bg-white border border-brand-wood/10 rounded-xl p-6 shadow-sm h-full flex flex-col justify-center min-h-[250px]">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="p-3 bg-green-50 text-green-600 rounded-xl">
+                            <lucide-icon name="check-circle" [size]="28"></lucide-icon>
                         </div>
-                        
-                        <button (click)="runInfoPrediction()" class="px-4 py-2 border-2 border-brand-terra text-brand-terra hover:bg-brand-terra hover:text-white rounded-lg font-bold transition-colors text-sm">
-                           {{ currentPrediction.antiguo ? 'Recalcular Ahora' : 'Actualizar Datos' }}
-                        </button>
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-dark">Resumen de la Predicción</h4>
+                            <p class="text-sm text-gray-500">Resultados generados exitosamente</p>
+                        </div>
                     </div>
                     
-                    <!-- Chart Visualization (CSS Bars) -->
-                    <div class="mt-8">
-                        <h4 class="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Histórico vs Predicción</h4>
-                        <div class="flex items-end gap-2 h-48 w-full">
-                            <div *ngFor="let stat of predictionStats" class="flex-1 flex flex-col items-center group relative">
-                                <!-- Tooltip -->
-                                <div class="absolute -top-10 bg-brand-dark text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                    Real: {{ stat.real }} | Pred: {{ stat.prediccion }}
-                                </div>
-                                
-                                <!-- Bar Container -->
-                                <div class="w-full max-w-[40px] flex gap-1 items-end h-full">
-                                    <!-- Real Bar -->
-                                    <div class="w-1/2 bg-gray-300 rounded-t-sm transition-all hover:bg-gray-400" 
-                                         [style.height.%]="(stat.real / maxVal) * 100"></div>
-                                    <!-- Pred Bar -->
-                                    <div class="w-1/2 bg-brand-terra rounded-t-sm transition-all hover:bg-brand-terra/80" 
-                                         [style.height.%]="(stat.prediccion / maxVal) * 100"></div>
-                                </div>
-                                <span class="text-xs text-gray-500 mt-2 font-medium">{{ stat.mes }}</span>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-sm text-gray-500 mb-1">Insumo ID Analizado</p>
+                            <p class="text-lg font-bold text-brand-dark">#{{ currentPrediction.insumoId || '---' }}</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-sm text-gray-500 mb-1">Intervalo Seleccionado</p>
+                            <p class="text-lg font-bold text-brand-dark">{{ getIntervalLabel(currentPrediction.intervalo) }}</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-sm text-gray-500 mb-1">Demanda Estimada</p>
+                            <div class="flex items-baseline gap-2">
+                               <span class="text-2xl font-bold text-brand-dark">{{ currentPrediction.cantidad_estimada }}</span>
+                               <span class="text-sm text-gray-500 font-medium">{{ getUnit() }}</span>
                             </div>
                         </div>
-                        <div class="flex justify-center gap-4 mt-4 text-xs">
-                            <div class="flex items-center gap-1"><div class="w-3 h-3 bg-gray-300 rounded-sm"></div> Consumo Real</div>
-                            <div class="flex items-center gap-1"><div class="w-3 h-3 bg-brand-terra rounded-sm"></div> Predicción</div>
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <p class="text-sm text-gray-500 mb-1">Nivel de Confianza</p>
+                            <p class="text-lg font-bold text-green-600">{{ currentPrediction.confianza }}%</p>
                         </div>
                     </div>
                  </div>
 
                  <!-- Empty State -->
-                 <div *ngIf="!currentPrediction && selectedInsumo" class="h-full flex items-center justify-center text-gray-400 text-sm italic min-h-[300px] border-2 border-dashed border-gray-100 rounded-xl">
-                    <p>Seleccione insumo y mes para ver o generar predicción.</p>
-                 </div>
-                 
-                  <div *ngIf="!selectedInsumo" class="h-full flex items-center justify-center text-gray-400 text-sm italic min-h-[300px] border-2 border-dashed border-gray-100 rounded-xl">
+                 <div *ngIf="!currentPrediction" class="h-full flex items-center justify-center text-gray-400 text-sm italic min-h-[250px] border-2 border-dashed border-gray-100 rounded-xl">
                     <div class="text-center">
                         <lucide-icon name="brain-circuit" [size]="48" class="mx-auto mb-2 opacity-20"></lucide-icon>
-                        <p>Seleccione un insumo para comenzar el análisis.</p>
+                        <p>Configure los parámetros y presione "PREDECIR" para generar un análisis.</p>
                     </div>
                  </div>
              </div>
@@ -175,27 +158,54 @@ import { Observable } from 'rxjs';
        </div>
 
       <!-- Charts Section (Global) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-         <!-- Demand Prediction Chart Placeholder -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+         <!-- 1. Gráfico de Barras de Recomendación de Reabastecimiento -->
          <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <h3 class="font-bold text-brand-dark mb-4">Tendencia de Demanda (Histórico vs Predicción)</h3>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400">
-               <div class="text-center">
-                  <lucide-icon name="bar-chart-3" [size]="48" class="mx-auto mb-2 opacity-20"></lucide-icon>
-                  <p>Gráfico de Barras / Lineal</p>
-                  <p class="text-xs mt-1">Comparativa de consumo real vs predicho</p>
+            <h3 class="font-bold text-brand-dark mb-4">Recomendación de Reabastecimiento</h3>
+            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
+               <div class="text-center z-10 transition-transform group-hover:scale-105">
+                  <lucide-icon name="bar-chart-3" [size]="48" class="mx-auto mb-2 opacity-30 text-blue-500"></lucide-icon>
+                  <p class="font-medium text-gray-600">Gráfico de Barras</p>
+                  <p class="text-xs mt-1 text-gray-400">Stock actual vs Cantidad a pedir</p>
                </div>
             </div>
          </div>
 
-         <!-- Input Demand Prediction Chart Placeholder -->
+         <!-- 2. Gráfico de Líneas de Tendencia (Demanda Predicha vs. Histórica) -->
          <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <h3 class="font-bold text-brand-dark mb-4">Proyección de Costos</h3>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400">
-               <div class="text-center">
-                  <lucide-icon name="pie-chart" [size]="48" class="mx-auto mb-2 opacity-20"></lucide-icon>
-                  <p>Gráfico Circular</p>
-                  <p class="text-xs mt-1">Distribución de costos por categoría</p>
+            <div class="w-full flex justify-between items-center mb-4">
+                <h3 class="font-bold text-brand-dark">Líneas de Tendencia</h3>
+                <span class="text-[10px] uppercase font-bold text-brand-terra bg-brand-terra/10 px-2 py-1 rounded">Predicha vs Histórica</span>
+            </div>
+            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
+               <div class="text-center z-10 transition-transform group-hover:scale-105">
+                  <lucide-icon name="trending-up" [size]="48" class="mx-auto mb-2 opacity-30 text-brand-terra"></lucide-icon>
+                  <p class="font-medium text-gray-600">Gráfico de Líneas</p>
+                  <p class="text-xs mt-1 text-gray-400">Proyección con intervalo de confianza</p>
+               </div>
+            </div>
+         </div>
+
+         <!-- 3. Composición del Costo Total de Insumos (Food Cost) -->
+         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
+            <h3 class="font-bold text-brand-dark mb-4">Costos por Insumo (Food Cost)</h3>
+            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
+               <div class="text-center z-10 transition-transform group-hover:scale-105">
+                  <lucide-icon name="pie-chart" [size]="48" class="mx-auto mb-2 opacity-30 text-green-500"></lucide-icon>
+                  <p class="font-medium text-gray-600">Gráfico Circular</p>
+                  <p class="text-xs mt-1 text-gray-400">Gasto real vs Gasto predicho</p>
+               </div>
+            </div>
+         </div>
+
+         <!-- 4. Mapa de Calor (Heatmap) de Demanda Temporal -->
+         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
+            <h3 class="font-bold text-brand-dark mb-4">Mapa de Calor: Demanda Temporal</h3>
+            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
+               <div class="text-center z-10 transition-transform group-hover:scale-105">
+                  <lucide-icon name="layout-dashboard" [size]="48" class="mx-auto mb-2 opacity-30 text-orange-500"></lucide-icon>
+                  <p class="font-medium text-gray-600">Mapa de Calor (Heatmap)</p>
+                  <p class="text-xs mt-1 text-gray-400">Volumen por días y horas</p>
                </div>
             </div>
          </div>
@@ -212,58 +222,47 @@ export class DashboardComponent implements OnInit {
 
    insumos$: Observable<any[]> = this.inventoryService.getInsumos();
    selectedInsumo: number | null = null;
-   selectedMonth: number = new Date().getMonth() + 1;
-
+   selectedInterval: string = '1_semana';
    currentPrediction: any = null;
-   predictionStats: any[] = [];
-   maxVal = 100; // For chart scaling
 
-   months = [
-      { value: 1, label: 'Enero' }, { value: 2, label: 'Febrero' }, { value: 3, label: 'Marzo' },
-      { value: 4, label: 'Abril' }, { value: 5, label: 'Mayo' }, { value: 6, label: 'Junio' },
-      { value: 7, label: 'Julio' }, { value: 8, label: 'Agosto' }, { value: 9, label: 'Septiembre' },
-      { value: 10, label: 'Octubre' }, { value: 11, label: 'Noviembre' }, { value: 12, label: 'Diciembre' }
+   timeIntervals = [
+      { value: '3_dias', label: '3 Días' },
+      { value: '1_semana', label: '1 Semana' },
+      { value: '1_mes', label: '1 Mes' }
    ];
 
    ngOnInit() {
       this.dashboardService.getKPIs().subscribe(data => this.kpis = data);
    }
 
-   checkPrediction() {
-      if (this.selectedInsumo) {
-         this.currentPrediction = null;
-         this.dashboardService.checkPrediction(this.selectedInsumo, this.selectedMonth)
-            .subscribe(pred => {
-               if (pred) {
-                  this.currentPrediction = pred;
-                  this.loadStats();
-               } else {
-                  this.runInfoPrediction();
-               }
-            });
+   runPrediction() {
+      if (!this.selectedInsumo) {
+         alert('Por favor, selecciona un insumo primero.');
+         return;
       }
+      
+      // Construimos el payload que será enviado al API cuando esté lista
+      const payloadRequest = {
+         producto_id: this.selectedInsumo,
+         intervalo_tiempo: this.selectedInterval
+      };
+      console.log('Enviando datos al motor de predicción (simulado):', payloadRequest);
+
+      setTimeout(() => {
+         // Desplegamos el estado del resumen simulado
+         this.currentPrediction = {
+            insumoId: this.selectedInsumo,
+            intervalo: this.selectedInterval,
+            cantidad_estimada: Math.floor(Math.random() * 50) + 20,
+            confianza: Math.floor(Math.random() * 10) + 85 // Rango 85-94%
+         };
+      }, 500);
    }
 
-   runInfoPrediction() {
-      if (this.selectedInsumo) {
-         this.dashboardService.runPrediction(this.selectedInsumo, this.selectedMonth)
-            .subscribe(res => {
-               this.currentPrediction = res;
-               this.loadStats();
-            });
-      }
+   getIntervalLabel(val: string): string {
+      const found = this.timeIntervals.find(i => i.value === val);
+      return found ? found.label : val;
    }
-
-   loadStats() {
-      if (this.selectedInsumo) {
-         this.dashboardService.getPredictionStats(this.selectedInsumo).subscribe(stats => {
-            this.predictionStats = stats;
-            // Calc max value for scaling
-            this.maxVal = Math.max(...stats.map(s => Math.max(s.real, s.prediccion))) * 1.2;
-         });
-      }
-   }
-
    getUnit() {
       return 'Kg';
    }

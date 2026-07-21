@@ -42,12 +42,24 @@ import { AuthService } from '../../../services/auth.service';
            <span>Compras</span>
         </a>
 
+        <a *ngIf="hasRole('MOZO') || hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" routerLink="/consultas-sprint-2" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-brand-wood transition-all duration-200 group">
+           <lucide-icon name="file-text" [size]="20" class="group-hover:text-brand-terra transition-colors"></lucide-icon>
+           <span>Consultas S2</span>
+        </a>
+
         <div *ngIf="hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" class="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Gestión</div>
 
         <a *ngIf="hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" routerLink="/inventario" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"
            class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-brand-wood transition-all duration-200 group">
            <lucide-icon name="package" [size]="20" class="group-hover:text-brand-terra transition-colors"></lucide-icon>
            <span>Inventario</span>
+        </a>
+
+        <a *ngIf="hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" routerLink="/mermas" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-brand-wood transition-all duration-200 group">
+           <lucide-icon name="trash-2" [size]="20" class="group-hover:text-brand-terra transition-colors"></lucide-icon>
+           <span>Mermas</span>
         </a>
 
         <a *ngIf="hasRole('ADMINISTRADOR')" routerLink="/usuarios" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"

@@ -1,0 +1,35 @@
+
+> sabores-app@0.0.0 start
+> ng serve --host 127.0.0.1 --port 4200
+
+Initial chunk files | Names                        |  Raw size
+main.js             | main                         |  89.73 kB | 
+polyfills.js        | polyfills                    |  88.09 kB | 
+styles.css          | styles                       |  28.44 kB | 
+chunk-LH2NMUOI.js   | -                            |   3.07 kB | 
+chunk-SMDZ6Y5S.js   | -                            |   2.36 kB | 
+chunk-ESJ6CM3R.js   | -                            |   1.26 kB | 
+chunk-4E2JY3TT.js   | -                            | 754 bytes | 
+chunk-2A6GE2XG.js   | -                            | 183 bytes | 
+
+                    | Initial total                | 213.86 kB
+
+Lazy chunk files    | Names                        |  Raw size
+chunk-JTWJREFJ.js   | client-management-component  |  20.84 kB | 
+chunk-4ADF4HY5.js   | user-management-component    |  20.82 kB | 
+chunk-W6BHZQCD.js   | waste-registration-component |  20.50 kB | 
+chunk-OKWFGGN5.js   | register-component           |  12.04 kB | 
+chunk-ZJJ72B2M.js   | login-component              |  10.66 kB | 
+chunk-BPSVUDF3.js   | unauthorized-component       |   3.67 kB | 
+chunk-542PB6C5.js   | -                            |   1.02 kB | 
+
+Application bundle generation complete. [4.542 seconds]
+
+Watch mode enabled. Watching for file changes...
+  ➜  Local:   http://127.0.0.1:4200/
+Initial chunk files | Names | Raw size
+main.js             | main  | 89.74 kB | 
+
+Application bundle generation complete. [1.256 seconds]
+
+Page reload sent to client(s).
