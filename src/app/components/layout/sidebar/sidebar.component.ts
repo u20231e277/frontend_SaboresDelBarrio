@@ -28,6 +28,12 @@ import { AuthService } from '../../../services/auth.service';
            <span>Dashboard</span>
         </a>
 
+        <a *ngIf="hasRole('JEFE_DE_COCINA') || hasRole('ADMINISTRADOR')" routerLink="/predicciones" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"
+           class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-brand-wood transition-all duration-200 group">
+           <lucide-icon name="brain-circuit" [size]="20" class="group-hover:text-brand-terra transition-colors"></lucide-icon>
+           <span>Predicciones</span>
+        </a>
+
         <div class="pt-4 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Operaciones</div>
 
         <a *ngIf="hasRole('MOZO') || hasRole('ADMINISTRADOR')" routerLink="/ventas" routerLinkActive="bg-brand-terra/10 text-brand-terra font-medium"

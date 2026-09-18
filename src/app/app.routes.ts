@@ -26,6 +26,12 @@ export const routes: Routes = [
                 data: { roles: ['JEFE_DE_COCINA', 'ADMINISTRADOR'] }
             },
             {
+                path: 'predicciones',
+                loadComponent: () => import('./components/predictions/predictions.component').then(m => m.PredictionsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['JEFE_DE_COCINA', 'ADMINISTRADOR'] }
+            },
+            {
                 path: 'mermas',
                 loadComponent: () => import('./components/waste/waste-registration/waste-registration.component').then(m => m.WasteRegistrationComponent),
                 canActivate: [roleGuard],

@@ -1,275 +1,65 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DashboardService } from '../../services/dashboard.service';
-import { InventoryService } from '../../services/inventory.service';
+import { catchError, finalize, forkJoin, of, switchMap } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
-import { Observable } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
+import { DashboardHealth, PredictionDashboard, PredictionHorizon, SupplyRecommendation } from '../../models/prediction-dashboard.model';
+import { PredictionDashboardService } from '../../services/prediction-dashboard.service';
+
+const DOWN: DashboardHealth = { java_api: { status: 'DOWN' }, fastapi: { status: 'DOWN' }, database: { status: 'DOWN' } };
 
 @Component({
-   selector: 'app-dashboard',
-   standalone: true,
-   imports: [CommonModule, FormsModule, LucideAngularModule],
-   template: `
-    <div class="space-y-6">
-      
-      <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-           <h2 class="text-2xl font-bold text-brand-dark">Dashboard</h2>
-           <p class="text-gray-500">Resumen y predicciones del día</p>
-        </div>
-        <div class="text-right">
-           <div class="text-sm font-medium text-brand-wood-light">{{ today | date:'fullDate' }}</div>
-        </div>
+  selector: 'app-dashboard', standalone: true,
+  imports: [CommonModule, FormsModule, LucideAngularModule],
+  template: `
+  <div class="space-y-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div><h2 class="text-2xl font-bold text-brand-dark">Dashboard</h2><p class="text-gray-500">Estado de abastecimiento y resumen predictivo</p></div>
+      <div class="flex flex-wrap items-center gap-2">
+        <select [(ngModel)]="selectedDate" (ngModelChange)="loadDashboard()" [disabled]="loading || !dates.length" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-brand-dark"><option *ngFor="let date of dates" [value]="date">{{ formatDate(date) }}</option></select>
+        <span class="rounded-full px-3 py-1 text-xs font-medium" [ngClass]="health.java_api.status === 'UP' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'">Java API: {{ health.java_api.status === 'UP' ? 'conectada' : 'sin conexión' }}</span>
+        <span class="rounded-full px-3 py-1 text-xs font-medium" [ngClass]="health.fastapi.status === 'UP' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'">FastAPI: {{ health.fastapi.status === 'UP' ? 'activa' : 'inactiva' }}</span>
       </div>
-
-      <!-- KPIs -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Efficiency Card -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 flex items-start justify-between">
-           <div>
-              <p class="text-sm font-medium text-gray-500 mb-1">Eficiencia Cocina</p>
-              <h3 class="text-3xl font-bold text-brand-dark">{{ kpis?.eficiencia }}%</h3>
-              <div class="flex items-center gap-1 text-green-600 text-sm mt-2">
-                 <lucide-icon name="trending-up" [size]="16"></lucide-icon>
-                 <span>+2.4% vs ayer</span>
-              </div>
-           </div>
-           <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
-              <lucide-icon name="activity" [size]="24"></lucide-icon>
-           </div>
-        </div>
-
-        <!-- Mermas Card -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 flex items-start justify-between">
-           <div>
-              <p class="text-sm font-medium text-gray-500 mb-1">Mermas (Kg)</p>
-              <h3 class="text-3xl font-bold text-brand-dark">{{ kpis?.mermas }}</h3>
-              <div class="flex items-center gap-1 text-red-500 text-sm mt-2">
-                 <lucide-icon name="trending-down" [size]="16"></lucide-icon>
-                 <span>-0.5% vs obj</span>
-              </div>
-           </div>
-           <div class="p-3 bg-red-50 text-brand-terra rounded-xl">
-              <lucide-icon name="trending-down" [size]="24"></lucide-icon>
-           </div>
-        </div>
-
-        <!-- Ventas Card (Proyectadas) -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 flex items-start justify-between">
-           <div>
-              <p class="text-sm font-medium text-gray-500 mb-1">Ventas Proyectadas</p>
-              <h3 class="text-3xl font-bold text-brand-dark">S/ {{ kpis?.ventas_proyectadas }}</h3>
-              <div class="flex items-center gap-1 text-brand-terra text-sm mt-2 font-medium">
-                 <span>Predicción IA</span>
-              </div>
-           </div>
-           <div class="p-3 bg-brand-cream text-brand-wood rounded-xl">
-              <lucide-icon name="dollar-sign" [size]="24"></lucide-icon>
-           </div>
-        </div>
+    </header>
+    <div *ngIf="error" class="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><span>{{ error }}</span><button type="button" (click)="error = ''" aria-label="Cerrar">×</button></div>
+    <section class="flex flex-col gap-3 border-y border-brand-wood/10 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex items-center gap-2"><span class="text-sm font-medium text-gray-600">Horizonte:</span><button *ngFor="let horizon of horizons" type="button" (click)="selectHorizon(horizon)" class="rounded-lg border px-3 py-1.5 text-sm transition-colors" [ngClass]="selectedHorizon === horizon ? 'border-brand-terra bg-brand-terra text-white' : 'border-gray-200 bg-white text-gray-600 hover:border-brand-terra'">{{ horizon }} días</button></div>
+      <div *ngIf="isAdmin" class="flex items-center gap-2"><label class="text-sm text-gray-600">Margen <input [(ngModel)]="safetyMargin" type="number" min="0" max="1" step="0.01" class="ml-1 w-20 rounded-lg border border-gray-200 px-2 py-1"></label><button type="button" (click)="updatePredictions()" [disabled]="updating || !selectedDate" class="inline-flex items-center gap-2 rounded-lg bg-brand-terra px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><lucide-icon name="brain-circuit" [size]="16"></lucide-icon>{{ updating ? 'Actualizando...' : 'Actualizar predicciones' }}</button></div>
+    </section>
+    <section *ngIf="data as dashboard; else empty" class="space-y-6">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article class="border border-brand-wood/10 bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">Insumos analizados</p><p class="mt-2 text-3xl font-bold text-brand-dark">{{ dashboard.indicadores.insumos_analizados }}</p><p class="mt-2 text-xs text-gray-500">Inventario considerado</p></article>
+        <article class="border border-brand-wood/10 bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">Requieren compra</p><p class="mt-2 text-3xl font-bold text-red-600">{{ dashboard.indicadores.requieren_compra }}</p><p class="mt-2 text-xs text-gray-500">{{ dashboard.indicadores.porcentaje_requieren_compra | number:'1.0-1' }}% del total</p></article>
+        <article class="border border-brand-wood/10 bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">Stock suficiente</p><p class="mt-2 text-3xl font-bold text-green-600">{{ dashboard.indicadores.stock_suficiente }}</p><p class="mt-2 text-xs text-gray-500">{{ dashboard.indicadores.porcentaje_stock_suficiente | number:'1.0-1' }}% del total</p></article>
+        <article class="border border-brand-wood/10 bg-white p-5 shadow-sm"><p class="text-sm text-gray-500">Margen de seguridad</p><p class="mt-2 text-3xl font-bold text-brand-dark">{{ dashboard.margen_seguridad * 100 | number:'1.0-0' }}%</p><p class="mt-2 text-xs text-gray-500">Modelo {{ dashboard.version_modelo }}</p></article>
       </div>
-
-       <!-- Prediction Section -->
-       <div class="bg-white p-8 rounded-2xl shadow-sm border border-brand-wood/5">
-          <div class="flex items-center gap-3 mb-6">
-             <div class="p-2 bg-brand-terra/10 text-brand-terra rounded-lg">
-                <lucide-icon name="brain-circuit" [size]="24"></lucide-icon> 
-             </div>
-             <div>
-                <h3 class="text-xl font-bold text-brand-dark">Motor de Predicción (Random Forest)</h3>
-                <p class="text-sm text-gray-500">Configuración de análisis predictivo</p>
-             </div>
-          </div>
-
-          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-             <div class="lg:col-span-1 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Insumo a Predecir</label>
-                    <select [(ngModel)]="selectedInsumo" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
-                       <option [ngValue]="null" disabled>Seleccione Insumo</option>
-                       <option *ngFor="let item of insumos$ | async" [value]="item.id_insumo">{{ item.nombre }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Intervalo de Tiempo</label>
-                    <select [(ngModel)]="selectedInterval" class="w-full p-3 rounded-xl border border-gray-200 focus:border-brand-terra outline-none bg-gray-50">
-                       <option *ngFor="let m of timeIntervals" [value]="m.value">{{ m.label }}</option>
-                    </select>
-                </div>
-                
-                 <!-- Buttons -->
-                 <button (click)="runPrediction()" class="w-full flex items-center justify-center gap-2 mt-4 px-4 py-3 bg-brand-terra text-white rounded-xl hover:bg-brand-terra/90 transition-colors shadow-lg font-bold">
-                    <lucide-icon name="brain-circuit" [size]="20"></lucide-icon>
-                    PREDECIR
-                 </button>
-                 <button *ngIf="currentPrediction" (click)="downloadReport()" class="w-full flex items-center justify-center gap-2 mt-2 px-4 py-3 bg-brand-dark text-white rounded-xl hover:bg-brand-wood transition-colors shadow-lg">
-                    <lucide-icon name="file-text" [size]="20"></lucide-icon>
-                    Descargar Reporte PDF
-                 </button>
-             </div>
-             
-             <div class="lg:col-span-3">
-                 <!-- Prediction Result Card -->
-                 <div *ngIf="currentPrediction" class="bg-white border border-brand-wood/10 rounded-xl p-6 shadow-sm h-full flex flex-col justify-center min-h-[250px]">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="p-3 bg-green-50 text-green-600 rounded-xl">
-                            <lucide-icon name="check-circle" [size]="28"></lucide-icon>
-                        </div>
-                        <div>
-                            <h4 class="text-xl font-bold text-brand-dark">Resumen de la Predicción</h4>
-                            <p class="text-sm text-gray-500">Resultados generados exitosamente</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                            <p class="text-sm text-gray-500 mb-1">Insumo ID Analizado</p>
-                            <p class="text-lg font-bold text-brand-dark">#{{ currentPrediction.insumoId || '---' }}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                            <p class="text-sm text-gray-500 mb-1">Intervalo Seleccionado</p>
-                            <p class="text-lg font-bold text-brand-dark">{{ getIntervalLabel(currentPrediction.intervalo) }}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                            <p class="text-sm text-gray-500 mb-1">Demanda Estimada</p>
-                            <div class="flex items-baseline gap-2">
-                               <span class="text-2xl font-bold text-brand-dark">{{ currentPrediction.cantidad_estimada }}</span>
-                               <span class="text-sm text-gray-500 font-medium">{{ getUnit() }}</span>
-                            </div>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                            <p class="text-sm text-gray-500 mb-1">Nivel de Confianza</p>
-                            <p class="text-lg font-bold text-green-600">{{ currentPrediction.confianza }}%</p>
-                        </div>
-                    </div>
-                 </div>
-
-                 <!-- Empty State -->
-                 <div *ngIf="!currentPrediction" class="h-full flex items-center justify-center text-gray-400 text-sm italic min-h-[250px] border-2 border-dashed border-gray-100 rounded-xl">
-                    <div class="text-center">
-                        <lucide-icon name="brain-circuit" [size]="48" class="mx-auto mb-2 opacity-20"></lucide-icon>
-                        <p>Configure los parámetros y presione "PREDECIR" para generar un análisis.</p>
-                    </div>
-                 </div>
-             </div>
-          </div>
-       </div>
-
-      <!-- Charts Section (Global) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-         <!-- 1. Gráfico de Barras de Recomendación de Reabastecimiento -->
-         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <h3 class="font-bold text-brand-dark mb-4">Recomendación de Reabastecimiento</h3>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
-               <div class="text-center z-10 transition-transform group-hover:scale-105">
-                  <lucide-icon name="bar-chart-3" [size]="48" class="mx-auto mb-2 opacity-30 text-blue-500"></lucide-icon>
-                  <p class="font-medium text-gray-600">Gráfico de Barras</p>
-                  <p class="text-xs mt-1 text-gray-400">Stock actual vs Cantidad a pedir</p>
-               </div>
-            </div>
-         </div>
-
-         <!-- 2. Gráfico de Líneas de Tendencia (Demanda Predicha vs. Histórica) -->
-         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <div class="w-full flex justify-between items-center mb-4">
-                <h3 class="font-bold text-brand-dark">Líneas de Tendencia</h3>
-                <span class="text-[10px] uppercase font-bold text-brand-terra bg-brand-terra/10 px-2 py-1 rounded">Predicha vs Histórica</span>
-            </div>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
-               <div class="text-center z-10 transition-transform group-hover:scale-105">
-                  <lucide-icon name="trending-up" [size]="48" class="mx-auto mb-2 opacity-30 text-brand-terra"></lucide-icon>
-                  <p class="font-medium text-gray-600">Gráfico de Líneas</p>
-                  <p class="text-xs mt-1 text-gray-400">Proyección con intervalo de confianza</p>
-               </div>
-            </div>
-         </div>
-
-         <!-- 3. Composición del Costo Total de Insumos (Food Cost) -->
-         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <h3 class="font-bold text-brand-dark mb-4">Costos por Insumo (Food Cost)</h3>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
-               <div class="text-center z-10 transition-transform group-hover:scale-105">
-                  <lucide-icon name="pie-chart" [size]="48" class="mx-auto mb-2 opacity-30 text-green-500"></lucide-icon>
-                  <p class="font-medium text-gray-600">Gráfico Circular</p>
-                  <p class="text-xs mt-1 text-gray-400">Gasto real vs Gasto predicho</p>
-               </div>
-            </div>
-         </div>
-
-         <!-- 4. Mapa de Calor (Heatmap) de Demanda Temporal -->
-         <div class="bg-white p-6 rounded-2xl shadow-sm border border-brand-wood/5 h-80 flex flex-col">
-            <h3 class="font-bold text-brand-dark mb-4">Mapa de Calor: Demanda Temporal</h3>
-            <div class="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 relative overflow-hidden group">
-               <div class="text-center z-10 transition-transform group-hover:scale-105">
-                  <lucide-icon name="layout-dashboard" [size]="48" class="mx-auto mb-2 opacity-30 text-orange-500"></lucide-icon>
-                  <p class="font-medium text-gray-600">Mapa de Calor (Heatmap)</p>
-                  <p class="text-xs mt-1 text-gray-400">Volumen por días y horas</p>
-               </div>
-            </div>
-         </div>
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <section class="border border-brand-wood/10 bg-white p-5 shadow-sm xl:col-span-2"><div class="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-bold text-brand-dark">Consumo previsto por horizonte</h3><p class="text-sm text-gray-500">Top 8 insumos analizados</p></div><div class="flex gap-3 text-xs text-gray-500"><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-green-500"></i>3 días</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-amber-400"></i>7 días</span><span><i class="mr-1 inline-block h-2 w-2 rounded-full bg-brand-terra"></i>14 días</span></div></div><div class="overflow-x-auto"><div class="grid min-w-[560px] grid-cols-8 items-end gap-3 border-b border-l border-gray-200 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_39px,#f1f1f1_40px)] px-3 pt-4" style="height: 250px"><div *ngFor="let item of chartItems" class="flex h-full min-w-0 flex-col justify-end"><div class="flex h-full items-end justify-center gap-1"><span class="w-3 rounded-t bg-green-500" [style.height.%]="barHeight(item.prediccion_3_dias)" [title]="item.prediccion_3_dias + ' ' + item.unidad"></span><span class="w-3 rounded-t bg-amber-400" [style.height.%]="barHeight(item.prediccion_7_dias)" [title]="item.prediccion_7_dias + ' ' + item.unidad"></span><span class="w-3 rounded-t bg-brand-terra" [style.height.%]="barHeight(item.prediccion_14_dias)" [title]="item.prediccion_14_dias + ' ' + item.unidad"></span></div><span class="mt-2 truncate text-center text-[10px] text-gray-600" [title]="item.nombre_insumo">{{ item.nombre_insumo }}</span></div></div></div></section>
+        <section class="border border-brand-wood/10 bg-white p-5 shadow-sm"><h3 class="font-bold text-brand-dark">Estado de abastecimiento</h3><p class="mt-1 text-sm text-gray-500">Decisión para la fecha seleccionada</p><div class="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:justify-center xl:flex-col"><div class="relative h-40 w-40 rounded-full" [style.background]="donutBackground"><div class="absolute inset-9 grid place-items-center rounded-full bg-white text-center"><strong class="block text-2xl text-brand-dark">{{ supplyTotal }}</strong><span class="text-[11px] text-gray-500">insumos</span></div></div><div class="space-y-4 text-sm"><div class="flex items-start gap-2"><i class="mt-1 inline-block h-2.5 w-2.5 rounded-full bg-red-500"></i><p><strong class="block text-brand-dark">Requiere compra</strong><span class="text-xs text-gray-500">{{ dashboard.estado_abastecimiento.requieren_compra }} insumos ({{ purchasePercent | number:'1.0-0' }}%)</span></p></div><div class="flex items-start gap-2"><i class="mt-1 inline-block h-2.5 w-2.5 rounded-full bg-green-500"></i><p><strong class="block text-brand-dark">Stock suficiente</strong><span class="text-xs text-gray-500">{{ dashboard.estado_abastecimiento.stock_suficiente }} insumos ({{ sufficientPercent | number:'1.0-0' }}%)</span></p></div></div></div></section>
       </div>
-    </div>
-  `
+      <section class="border border-brand-wood/10 bg-white shadow-sm"><header class="flex flex-col gap-3 border-b border-gray-100 p-5 md:flex-row md:items-center md:justify-between"><div><h3 class="font-bold text-brand-dark">Recomendaciones de compra</h3><p class="text-sm text-gray-500">Actualizado {{ dashboard.ultima_actualizacion | date:'dd/MM/yyyy HH:mm' }}</p></div><button type="button" (click)="exportCsv()" class="inline-flex items-center gap-2 self-start rounded-lg border border-brand-wood/20 px-3 py-2 text-sm font-medium text-brand-wood"><lucide-icon name="file-text" [size]="16"></lucide-icon>Exportar CSV</button></header><div class="overflow-x-auto"><table class="min-w-full text-left text-sm"><thead class="bg-brand-cream/40 text-xs uppercase text-gray-500"><tr><th class="px-5 py-3">Insumo</th><th class="px-5 py-3">Stock</th><th class="px-5 py-3">Predicción</th><th class="px-5 py-3">Compra</th><th class="px-5 py-3">Estado</th></tr></thead><tbody><tr *ngFor="let item of dashboard.recomendaciones.slice(0, 10)" class="border-t border-gray-100"><td class="px-5 py-3"><strong class="text-brand-dark">{{ item.nombre_insumo }}</strong><span class="block text-xs text-gray-500">{{ item.categoria_insumo || 'Sin categoría' }}</span></td><td class="px-5 py-3">{{ item.stock_actual | number:'1.0-2' }} {{ item.unidad }}</td><td class="px-5 py-3">{{ predictionValue(item) | number:'1.0-2' }} {{ item.unidad }}</td><td class="px-5 py-3 font-medium">{{ item.compra_recomendada | number:'1.0-2' }} {{ item.unidad }}</td><td class="px-5 py-3"><span class="rounded-full px-2 py-1 text-xs font-medium" [ngClass]="item.estado === 'REQUIERE_COMPRA' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">{{ item.estado === 'REQUIERE_COMPRA' ? 'Requiere compra' : 'Stock suficiente' }}</span></td></tr></tbody></table></div></section>
+    </section>
+    <ng-template #empty><section class="border border-dashed border-brand-wood/20 bg-white px-6 py-16 text-center"><lucide-icon name="brain-circuit" [size]="40" class="mx-auto text-brand-terra"></lucide-icon><h3 class="mt-3 font-bold text-brand-dark">{{ loading ? 'Cargando información predictiva...' : 'No hay información para mostrar' }}</h3><p class="mt-1 text-sm text-gray-500">{{ loading ? 'Consultando los resultados guardados.' : 'Ejecuta el proceso predictivo desde la sección Predicciones.' }}</p></section></ng-template>
+  </div>`
 })
 export class DashboardComponent implements OnInit {
-   dashboardService = inject(DashboardService);
-   inventoryService = inject(InventoryService);
-
-   kpis: any;
-   today = new Date();
-
-   insumos$: Observable<any[]> = this.inventoryService.getInsumos();
-   selectedInsumo: number | null = null;
-   selectedInterval: string = '1_semana';
-   currentPrediction: any = null;
-
-   timeIntervals = [
-      { value: '3_dias', label: '3 Días' },
-      { value: '1_semana', label: '1 Semana' },
-      { value: '1_mes', label: '1 Mes' }
-   ];
-
-   ngOnInit() {
-      this.dashboardService.getKPIs().subscribe(data => this.kpis = data);
-   }
-
-   runPrediction() {
-      if (!this.selectedInsumo) {
-         alert('Por favor, selecciona un insumo primero.');
-         return;
-      }
-      
-      // Construimos el payload que será enviado al API cuando esté lista
-      const payloadRequest = {
-         producto_id: this.selectedInsumo,
-         intervalo_tiempo: this.selectedInterval
-      };
-      console.log('Enviando datos al motor de predicción (simulado):', payloadRequest);
-
-      setTimeout(() => {
-         // Desplegamos el estado del resumen simulado
-         this.currentPrediction = {
-            insumoId: this.selectedInsumo,
-            intervalo: this.selectedInterval,
-            cantidad_estimada: Math.floor(Math.random() * 50) + 20,
-            confianza: Math.floor(Math.random() * 10) + 85 // Rango 85-94%
-         };
-      }, 500);
-   }
-
-   getIntervalLabel(val: string): string {
-      const found = this.timeIntervals.find(i => i.value === val);
-      return found ? found.label : val;
-   }
-   getUnit() {
-      return 'Kg';
-   }
-
-   downloadReport() {
-      alert('Descargando reporte PDF para ' + (this.currentPrediction?.fecha_prediccion || 'Predicción'));
-      // Logic for PDF generation would go here (e.g. using jsPDF)
-      console.log('Downloading PDF report...');
-   }
+  private readonly api = inject(PredictionDashboardService); private readonly auth = inject(AuthService);
+  data: PredictionDashboard | null = null; dates: string[] = []; selectedDate = ''; selectedHorizon: PredictionHorizon = 14; horizons: PredictionHorizon[] = [3, 7, 14]; health = DOWN; loading = true; updating = false; error = ''; safetyMargin = 0.1;
+  get isAdmin() { return this.auth.hasRole('ADMINISTRADOR'); }
+  get chartItems() { return [...(this.data?.consumo_por_insumo ?? [])].sort((a, b) => this.predictionValue(b) - this.predictionValue(a)).slice(0, 8); }
+  ngOnInit() { this.api.getDates().subscribe({ next: dates => { this.dates = dates; this.selectedDate = dates[0] || ''; this.loadDashboard(); }, error: () => { this.loading = false; this.error = 'No fue posible obtener las predicciones guardadas.'; } }); this.api.getHealth().pipe(catchError(() => of(DOWN))).subscribe(value => this.health = value); }
+  selectHorizon(horizon: PredictionHorizon) { this.selectedHorizon = horizon; this.loadDashboard(); }
+  loadDashboard() { if (!this.selectedDate) { this.loading = false; return; } this.loading = true; this.error = ''; this.api.getDashboard(this.selectedDate, this.selectedHorizon).pipe(finalize(() => this.loading = false)).subscribe({ next: data => { this.data = data; this.safetyMargin = data.margen_seguridad; }, error: error => this.error = this.errorMessage(error, 'cargar el dashboard') }); }
+  updatePredictions() { if (!this.isAdmin || !this.selectedDate) return; this.updating = true; this.error = ''; this.api.run(this.selectedDate, this.safetyMargin).pipe(switchMap(() => forkJoin({ data: this.api.getDashboard(this.selectedDate, this.selectedHorizon), dates: this.api.getDates(), health: this.api.getHealth().pipe(catchError(() => of(DOWN)))})), finalize(() => this.updating = false)).subscribe({ next: result => { this.data = result.data; this.dates = result.dates; this.health = result.health; this.safetyMargin = result.data.margen_seguridad; }, error: error => this.error = this.errorMessage(error, 'actualizar las predicciones') }); }
+  predictionValue(item: SupplyRecommendation) { return this.selectedHorizon === 3 ? item.prediccion_3_dias : this.selectedHorizon === 7 ? item.prediccion_7_dias : item.prediccion_14_dias; }
+  barHeight(value: number) { const maximum = Math.max(...this.chartItems.flatMap(row => [row.prediccion_3_dias, row.prediccion_7_dias, row.prediccion_14_dias]), 1); return value / maximum * 100; }
+  get supplyTotal() { return (this.data?.estado_abastecimiento.requieren_compra ?? 0) + (this.data?.estado_abastecimiento.stock_suficiente ?? 0); }
+  get purchasePercent() { return this.supplyTotal ? (this.data?.estado_abastecimiento.requieren_compra ?? 0) / this.supplyTotal * 100 : 0; }
+  get sufficientPercent() { return 100 - this.purchasePercent; }
+  get donutBackground() { return `conic-gradient(#ef4444 0 ${this.purchasePercent}%, #22c55e ${this.purchasePercent}% 100%)`; }
+  formatDate(date: string) { const [year, month, day] = date.split('-'); return `${day}/${month}/${year}`; }
+  exportCsv() { if (!this.selectedDate) return; this.api.exportCsv(this.selectedDate, this.selectedHorizon).subscribe({ next: blob => this.download(blob, `recomendaciones-${this.selectedDate}.csv`), error: error => this.error = this.errorMessage(error, 'exportar el reporte') }); }
+  private download(blob: Blob, name: string) { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url); }
+  private errorMessage(error: any, action: string) { const message = error?.error?.message; if (error?.status === 403) return 'Tu usuario no tiene permisos para ejecutar esta operación.'; return message || `No fue posible ${action}. Verifica que Spring Boot y FastAPI estén disponibles.`; }
 }
